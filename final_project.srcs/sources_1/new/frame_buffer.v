@@ -78,7 +78,7 @@ module coordinate_transformer (
 );
 
     // Internal calculation wires
-    wire [13:0] zoomed_x, zoomed_y;  // Intermediate calculations with extra precision
+    reg [13:0] zoomed_x, zoomed_y;  // Intermediate calculations with extra precision
     
     // Fixed-point precision for zoom calculations
     parameter ZOOM_PRECISION = 4;    // 4 bits of fractional precision

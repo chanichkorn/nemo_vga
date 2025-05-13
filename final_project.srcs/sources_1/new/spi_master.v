@@ -28,8 +28,8 @@ module spi_master(
     // For data transfer: ~12.5MHz (100MHz/8 = 12.5MHz)
     parameter CLK_DIV_FAST = 8'd4;    // Divider for faster sclk (divide by 8)
     
-    // Default to initialization speed
-    reg [7:0] clk_div = CLK_DIV_INIT;
+    // Default to initialization speed - REMOVED INITIAL ASSIGNMENT
+    reg [7:0] clk_div;
     reg [7:0] clk_counter = 8'd0;
     
     // SPI transfer state machine
@@ -44,13 +44,8 @@ module spi_master(
     // Mode control
     reg initialized = 1'b0;   // Start in slow mode
     
-    // Set to faster clock after initialization
-    task set_fast_mode;
-        begin
-            initialized <= 1'b1;
-            clk_div <= CLK_DIV_FAST;
-        end
-    endtask
+    // REMOVED the task that was creating multiple drivers
+    // Instead, we'll handle mode switching in the main state machine
     
     // SPI clock generation
     always @(posedge clk or posedge reset) begin
@@ -77,10 +72,16 @@ module spi_master(
             tx_ready <= 1'b1;     // Ready to accept data
             bit_counter <= 3'd0;
             initialized <= 1'b0;
-            clk_div <= CLK_DIV_INIT;
+            clk_div <= CLK_DIV_INIT;  // Set initial clock divider value here
         end else begin
             // Default values
             rx_valid <= 1'b0;
+            
+            // Handle fast mode setting - moved from separate always block
+            if (set_fast && !initialized) begin
+                initialized <= 1'b1;
+                clk_div <= CLK_DIV_FAST;
+            end
             
             case (state)
                 IDLE: begin
@@ -137,13 +138,6 @@ module spi_master(
                 
                 default: state <= IDLE;
             endcase
-        end
-    end
-    
-    // Handle set_fast signal
-    always @(posedge clk) begin
-        if (set_fast && !initialized) begin
-            set_fast_mode();
         end
     end
 

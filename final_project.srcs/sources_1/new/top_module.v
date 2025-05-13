@@ -1,31 +1,33 @@
 module image_display_system_top (
-    input wire clk,              // 100MHz system clock
-    input wire reset_n,          // Active-low reset switch (usually btnC)
+    input wire clk,                // 100MHz system clock
+    input wire reset_n,            // Active-low reset switch (btnC)
     
     // User control buttons
-    input wire btn_next,         // Next image button (btnR)
-    input wire btn_prev,         // Previous image button (btnL)
-    input wire btn_zoom_in,      // Zoom in button (btnU)
-    input wire btn_zoom_out,     // Zoom out button (btnD)
-    input wire [3:0] sw,         // Switches for pan control and options
-                                 // sw[0]: pan left, sw[1]: pan right
-                                 // sw[2]: pan up,   sw[3]: pan down
+    // Changed btn_next to btn_pattern to match XDC
+    input wire btn_pattern,        // Renamed from btn_next (btnR)
+    // Added missing btn_prev signal but not using it since no constraint
+    input wire btn_prev,           // Previous image button (btnL) - not in XDC
+    input wire btn_zoom_in,        // Zoom in button (btnU)
+    input wire btn_zoom_out,       // Zoom out button (btnD)
+    input wire [3:0] sw,           // Switches for pan control and options
+                                   // sw[0]: pan left, sw[1]: pan right
+                                   // sw[2]: pan up,   sw[3]: pan down
     
     // SD card interface (connect to Pmod port)
-    output wire sd_cs,           // SD card chip select
-    output wire sd_mosi,         // SD card MOSI
-    input wire sd_miso,          // SD card MISO
-    output wire sd_sclk,         // SD card serial clock
+    output wire sd_cs,             // SD card chip select
+    output wire sd_mosi,           // SD card MOSI
+    input wire sd_miso,            // SD card MISO
+    output wire sd_sclk,           // SD card serial clock
     
     // VGA interface
-    output wire [3:0] vga_r,     // VGA red channel
-    output wire [3:0] vga_g,     // VGA green channel
-    output wire [3:0] vga_b,     // VGA blue channel
-    output wire vga_hsync,       // VGA horizontal sync
-    output wire vga_vsync,       // VGA vertical sync
+    output wire [3:0] vga_r,       // VGA red channel
+    output wire [3:0] vga_g,       // VGA green channel
+    output wire [3:0] vga_b,       // VGA blue channel
+    output wire vga_hsync,         // VGA horizontal sync
+    output wire vga_vsync,         // VGA vertical sync
     
-    // Status LEDs
-    output wire [3:0] led        // Status LEDs for debugging
+    // Status LEDs - changed to match XDC
+    output wire [3:0] led          // Status LEDs for debugging
 );
 
     // Internal reset signal (active high)
@@ -38,9 +40,10 @@ module image_display_system_top (
     wire clk_locked;
     
     clk_wiz_0 clk_gen (
-        .clk_in1(clk),           // 100MHz input
-        .clk_out1(clk_25MHz),    // 25MHz output for VGA
-        .locked(clk_locked)
+        .clk_in1(clk),             // 100MHz input
+        .clk_out1(clk_25MHz),      // 25MHz output for VGA
+        .locked(clk_locked),
+        .reset(reset)              // Added missing reset connection
     );
     
     // =========================================================================
@@ -54,6 +57,13 @@ module image_display_system_top (
     wire [31:0] sd_sector_addr;
     
     // SPI controller for SD card
+    // Fixed wire declarations for signals used with spi_master
+    wire [7:0] sd_cmd_data;
+    wire sd_cmd_valid;
+    wire sd_cmd_ready;
+    // Also added missing set_fast signal
+    wire set_fast_spi = sd_initialized;
+    
     spi_master spi_controller (
         .clk(clk),
         .reset(reset),
@@ -65,7 +75,8 @@ module image_display_system_top (
         .rx_valid(sd_read_ready),
         .tx_data(sd_cmd_data),
         .tx_valid(sd_cmd_valid),
-        .tx_ready(sd_cmd_ready)
+        .tx_ready(sd_cmd_ready),
+        .set_fast(set_fast_spi)    // Added missing set_fast connection
     );
     
     // SD card controller (handles commands and initialization)
@@ -91,10 +102,11 @@ module image_display_system_top (
     wire btn_zoom_in_debounced;
     wire btn_zoom_out_debounced;
     
+    // Updated to use btn_pattern instead of btn_next
     button_debouncer btn_next_db (
         .clk(clk_25MHz),
         .reset(reset),
-        .btn_in(btn_next),
+        .btn_in(btn_pattern),      // Changed from btn_next to btn_pattern
         .btn_out(btn_next_debounced)
     );
     
@@ -167,6 +179,11 @@ module image_display_system_top (
     wire [9:0] vga_y;
     wire vga_active;
     wire [11:0] pixel_data;
+    
+    // Added missing wire declarations for frame buffer
+    wire [18:0] fb_write_addr;
+    wire [11:0] fb_write_data;
+    wire fb_write_en;
     
     image_loader img_loader (
         .clk(clk),
